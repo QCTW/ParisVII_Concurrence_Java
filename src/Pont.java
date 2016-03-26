@@ -11,7 +11,7 @@ public class Pont
 	{
 		Pont pToPass = new Pont();
 		Vector<Voiture> vCarList = new Vector<Voiture>();
-		for (int n = 0; n < 5; n++)
+		for (int n = 0; n < 10; n++)
 		{
 			Voiture vNord = new Voiture(Vers.NORD, pToPass);
 			Voiture vSud = new Voiture(Vers.SUD, pToPass);
@@ -32,12 +32,14 @@ public class Pont
 		{
 			while (currentDirection != v.getVers())
 			{
-				if (currentDirection == Vers.VIDE)
+				synchronized (this)
 				{
-					currentDirection = v.getVers();
-					System.out.println(v.getId() + "(" + v.getVers() + ") is the first car in the bridge");
-					SectionCritic(v);
-					break;
+					if (currentDirection == Vers.VIDE)
+					{
+						currentDirection = v.getVers();
+						System.out.println(v.getId() + "(" + v.getVers() + ") is the first car in the bridge(" + currentDirection + ")");
+						break;
+					}
 				}
 			}
 
@@ -53,15 +55,18 @@ public class Pont
 	private void SectionCritic(Voiture v) throws InterruptedException
 	{
 		semEnter.acquire();
-		System.out.println(v.getId() + "(" + v.getVers() + ") entered the bridge");
+		System.out.println(v.getId() + "(" + v.getVers() + ") entered the bridge(" + currentDirection + ")");
 		v.driving();
-		System.out.println(v.getId() + "(" + v.getVers() + ") leaving the bridge");
+		System.out.println(v.getId() + "(" + v.getVers() + ") leaving the bridge(" + currentDirection + ")");
 		semEnter.release();
-		System.out.println(v.getId() + "(" + v.getVers() + ") leaved the bridge. Capacity:" + semEnter.availablePermits());
-		if (semEnter.availablePermits() == CAPACITY)
+		System.out.println(v.getId() + "(" + v.getVers() + ") leaved the bridge(" + currentDirection + "). Capacity:" + semEnter.availablePermits());
+		synchronized (this)
 		{
-			currentDirection = Vers.VIDE;
-			System.out.println(v.getId() + "(" + v.getVers() + ") is the last car left the bridge");
+			if (semEnter.availablePermits() == CAPACITY)
+			{
+				currentDirection = Vers.VIDE;
+				System.out.println(v.getId() + "(" + v.getVers() + ") is the last car left the bridge(" + currentDirection + ")");
+			}
 		}
 
 	}
