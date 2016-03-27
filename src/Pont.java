@@ -33,7 +33,7 @@ public class Pont
 		{
 			// Here we use Pont(this) as our lock object, to protect the variable currentDirection
 			// Also, forcing cars that do not have the same direction as the bridge to wait with the lock
-			synchronized (this)
+			synchronized (semEnter)
 			{
 				// If the direction of the car is not the same as the bridge, block in the while loop
 				while (currentDirection != v.getVers())
@@ -47,7 +47,7 @@ public class Pont
 						break;
 					}
 
-					this.wait();
+					semEnter.wait();
 				}
 
 				// If it can exist the while loop above, means that the direction of the bridge is the same as the car
@@ -57,25 +57,26 @@ public class Pont
 				// After got a semaphore, check if this car is the last one on the bridge of the total capacity
 				if (semEnter.availablePermits() == 0)
 				{
-					// If it is the last one on the bridge of the total capacity, reverse the direction of the bridge
-					currentDirection = reverse(v.getVers());
-					System.out.println(v.getId() + "(" + v.getVers() + ") reversed the direction of the bridge(" + currentDirection + ")");
+					// If it is the last one on the bridge of the total capacity, set diretion to full
+					currentDirection = Vers.PLEIN;
+					System.out.println(v.getId() + "(" + v.getVers() + ") notify that the bridge is full(" + currentDirection + ")");
 				}
 			}
 
 			v.driving();
-			semEnter.release();
-			System.out.println(v.getId() + "(" + v.getVers() + ") leaved the bridge(" + currentDirection + "). Capacity:" + semEnter.availablePermits());
 
 			// Use lock again because we are going to change the value of currentDirection again.
-			synchronized (this)
+			synchronized (semEnter)
 			{
-				// If this car is the last one who left the bridge, set the direction to empty(VIDE) and notify all the other car who is waiting for the same lock
+				semEnter.release();
+				System.out.println(v.getId() + "(" + v.getVers() + ") leaved the bridge(" + currentDirection + "). Capacity:" + semEnter.availablePermits());
+
+				// If this car is the last one who left the bridge, reverse the direction and notify all the other cars who are waiting for the same lock
 				if (semEnter.availablePermits() == CAPACITY)
 				{
-					currentDirection = Vers.VIDE;
-					System.out.println(v.getId() + "(" + v.getVers() + ") is the last car left the bridge(" + currentDirection + ")");
-					this.notifyAll();
+					currentDirection = reverse(v.getVers());
+					System.out.println(v.getId() + "(" + v.getVers() + ") is the last car left the bridge. Change direction(" + currentDirection + ")");
+					semEnter.notifyAll();
 				}
 			}
 
@@ -97,7 +98,7 @@ public class Pont
 
 enum Vers
 {
-	NORD, SUD, VIDE
+	NORD, SUD, VIDE, PLEIN;
 }
 
 class Voiture extends Thread
