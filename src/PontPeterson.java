@@ -3,7 +3,7 @@ import java.util.concurrent.Semaphore;
 
 public class PontPeterson
 {
-	private static final int CAPACITY = 3;
+	private static final int CAPACITY = 1;
 	volatile int turn = 0;
 	volatile boolean isEmpty = false;
 	private final Semaphore[] semEnter = { new Semaphore(CAPACITY), new Semaphore(CAPACITY) };
