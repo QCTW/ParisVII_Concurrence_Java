@@ -6,18 +6,18 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Corde
 {
-	private static final int CAPACITY = 5;
+	private static final int CAPACITY = 3;
 	private Direction currentMoveDir = Direction.LEFT;
 	private final Lock lock = new ReentrantLock();
-	private final Condition cEmpty = lock.newCondition();
-	// private final Condition cFull = lock.newCondition();
+	private final Condition cSameDirection = lock.newCondition();
+	private final Condition cFull = lock.newCondition();
 	private final Semaphore semPassing = new Semaphore(CAPACITY);
 
 	public static void main(String[] args)
 	{
 		Corde corde = new Corde();
 		Vector<Babouin> v = new Vector<Babouin>();
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 10; i++)
 		{
 			Babouin bLeft = new Babouin(corde, Direction.LEFT);
 			Babouin bRight = new Babouin(corde, Direction.RIGHT);
@@ -36,17 +36,30 @@ public class Corde
 		try
 		{
 			lock.lock();
-			// System.out.println(b.getId() + "(" + b.getDirection() + ") tries to pass the canyon");
-			while (currentMoveDir != b.getDirection())
+			int nWaitCount = 0;
+			System.out.println(b.getId() + "(" + b.getDirection() + ") tries to pass the canyon");
+			if (currentMoveDir != b.getDirection())
 			{
-				System.out.println(b.getId() + "(" + b.getDirection() + ") waits to jump on the rope(" + currentMoveDir + ") " + getStatus());
-				cEmpty.await();
+				nWaitCount++;
+				System.out.println(b.getId() + "(" + b.getDirection() + ") waits(" + nWaitCount + ") because the direction of the rope(" + currentMoveDir + ") is not the same. " + getStatus());
+				cSameDirection.await();
 			}
-			lock.unlock();
+			while (semPassing.availablePermits() == 0)
+			{
+				nWaitCount++;
+				System.out.println(b.getId() + "(" + b.getDirection() + ") waits(" + nWaitCount + ") because that the rope(" + currentMoveDir + ") is full. " + getStatus());
+				cFull.await();
+				while (currentMoveDir != b.getDirection())
+				{
+					nWaitCount++;
+					System.out.println(b.getId() + "(" + b.getDirection() + ") waits(" + nWaitCount + ") because the direction of the rope(" + currentMoveDir + ") is not the same. " + getStatus());
+					cSameDirection.await();
+				}
+			}
 			semPassing.acquire();
+			lock.unlock();
 			// System.out.println(b.getId() + "(" + b.getDirection() + ") waits because the rope(" + currentMoveDir + ") is full. " + getStatus());
 			System.out.println(b.getId() + "(" + b.getDirection() + ") jumps on the rope(" + currentMoveDir + ") " + getStatus());
-
 			b.moving();
 
 			lock.lock();
@@ -56,7 +69,8 @@ public class Corde
 			{
 				currentMoveDir = reverse(b.getDirection());
 				System.out.println(b.getId() + "(" + b.getDirection() + ") is the last one left the rope. Reverse the rope(" + currentMoveDir + ") " + getStatus());
-				cEmpty.signalAll();
+				cSameDirection.signalAll();
+				cFull.signalAll();
 			}
 			lock.unlock();
 
